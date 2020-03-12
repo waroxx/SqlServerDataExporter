@@ -30,10 +30,18 @@ namespace SSDExporter.utilidades
         public DataTable data { get; set; }
 
         //constructores
+        public DataSourceConnection(string server, string dataBase,Credentials credentials)
+        {
+            ServerName = server;
+            DataBaseName = dataBase;
+            this.credentials = credentials;
+            Connection = new SqlConnection();
+        }
         public DataSourceConnection(string server, string dataBase)
         {
             ServerName = server;
             DataBaseName = dataBase;
+            this.credentials = credentials;
             Connection = new SqlConnection();
         }
         public DataSourceConnection()
@@ -46,8 +54,7 @@ namespace SSDExporter.utilidades
             Connection.ConnectionString = ConnectionString;
             try
             {
-                Connection.Open();
-                Connection.Close();
+                fetchTables();
                 return true;
             }
             catch (Exception e)
@@ -57,15 +64,31 @@ namespace SSDExporter.utilidades
             }
         }
 
-        private generateConnectionString()
+        private void generateConnectionString(bool securityType)
         {
             ConnectionString = "Server="+ServerName+
                 ";Database="+DataBaseName+
-                (credentials!=null?";User Id="+credentials.UserName+";Password="+credentials.Password+";":"");
+                (securityType?";User Id="+credentials.UserName+";Password="+credentials.Password+";": ";Integrated Security=True;");
         }
         private void fetchTables()
         {
-            Connection
+            SqlCommand command = new SqlCommand("SELECT table_name FROM information_schema.tables");
+            SqlDataReader reader = command.ExecuteReader();
+            try {
+                reader.Read();
+                DataTable dt = new DataTable();
+                Connection.Open();
+                dt.Load(reader);
+                Tables = dt.AsEnumerable().Select(r => r.Field<string>("table_name")).ToList();
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine(e.Message);
+                throw e;
+            }finally
+            {
+                Connection.Close();
+            }   
         }
     }
 }
